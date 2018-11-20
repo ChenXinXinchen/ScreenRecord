@@ -28,7 +28,6 @@ import android.widget.MediaController;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
-import com.iceteck.silicompressorr.SiliCompressor;
 
 import java.io.File;
 import java.io.FileInputStream;
