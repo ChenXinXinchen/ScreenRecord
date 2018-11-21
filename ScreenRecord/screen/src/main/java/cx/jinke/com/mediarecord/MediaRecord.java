@@ -178,7 +178,7 @@ public class MediaRecord extends Thread {
         this.play = play;
         targetFile = MediaUtil.getSaveDirectory() + System.currentTimeMillis() + "_muxAudio.mp4";
         String dateStr = getDateString();
-        combineVideoPath = MediaUtil.getSaveDirectory("Camera") + "MyTalkingTom-" +
+        combineVideoPath = MediaUtil.getSaveDirectory("Camera") + "MyTalkingAngela-" +
                 UUID.randomUUID().toString().substring(0, 3) + ".mp4";
 
         new Thread(new Runnable() {
