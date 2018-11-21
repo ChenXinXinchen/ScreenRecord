@@ -177,10 +177,11 @@ public class MediaRecord extends Thread {
     private void dealMedia(boolean play) {
         this.play = play;
         targetFile = MediaUtil.getSaveDirectory() + System.currentTimeMillis() + "_muxAudio.mp4";
+        String appName = "" ;
         if(mActivity.getPackageName().contains("tom")){
-            String appName = "MyTalkingTom-"
+            appName = "MyTalkingTom-" ;
         }else if(mActivity.getPackageName().contains("angela")){
-            String appName = "MyTalkingAngela-"
+             appName = "MyTalkingAngela-" ;
         }
         combineVideoPath = MediaUtil.getSaveDirectory("Camera") + appName +
                 UUID.randomUUID().toString().substring(0, 3) + ".mp4";
@@ -373,7 +374,9 @@ public class MediaRecord extends Thread {
 
     private void quitWorker() {
         if (mWorker != null) {
-            mWorker.quitSafely();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                mWorker.quitSafely();
+            }
             mWorker = null;
         }
     }
