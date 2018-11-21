@@ -47,7 +47,7 @@ public class MediaRecord extends Thread {
     private int mDpi;
     private MediaRecorder mMediaRecorder;
     private MediaProjection mMediaProjection;
-    private static final int FRAME_RATE = 15; // 15 fps
+    private static final int FRAME_RATE = 60; // 60 fps
     private static Activity mActivity;
     private static String fileName;
     private String combineVideoPath;
@@ -58,7 +58,6 @@ public class MediaRecord extends Thread {
     private boolean play = false;
     private static final int MSG_START = 0;
     private static final int MSG_DONE = 7;
-    private static final int MSG_PLAY = 12;
     private static final int STOP_WITH_EOS = 1;
     private HandlerThread mWorker;
     private MyHandler myHandler;
@@ -126,17 +125,15 @@ public class MediaRecord extends Thread {
         try {
             mMediaRecorder = new MediaRecorder();
             mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-//            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
             mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
             fileName = MediaUtil.getSaveDirectory() + System.currentTimeMillis() + ".mp4";
             mMediaRecorder.setOutputFile(fileName);
             mMediaRecorder.setVideoSize(mWidth, mHeight);
             mMediaRecorder.setVideoFrameRate(FRAME_RATE);
             Log.e(TAG, "mWidth=" + mWidth + "mHeight=" + mHeight);
-            mMediaRecorder.setVideoEncodingBitRate(1024 * 1024 * 3);
+            mMediaRecorder.setVideoEncodingBitRate(1800 * 1024);
             mMediaRecorder.setMaxFileSize(32 * 1024 * 1024);
             mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-//            mMediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
             mMediaRecorder.prepare();
         } catch (Exception e) {
             e.printStackTrace();
@@ -339,7 +336,7 @@ public class MediaRecord extends Thread {
                             new String[]{"video/mp4"}, new MediaScannerConnection.OnScanCompletedListener() {
                                 @Override
                                 public void onScanCompleted(String path, Uri uri) {
-                                     Log.e(TAG,"scan done");
+                                    Log.e(TAG, "scan done");
                                 }
                             });
                     break;
