@@ -82,7 +82,14 @@ public class MediaRecord extends Thread {
         mActivity = activity;
 
     }
+    public MediaRecord(int dpi, MediaProjection mp, Activity activity,int width ,int height) {
+        mDpi = dpi;
+        mMediaProjection = mp;
+        mActivity = activity;
+        mWidth = width ;
+        mHeight = height;
 
+    }
 
     public final void quit() {
         mForceQuit.set(true);
@@ -121,7 +128,12 @@ public class MediaRecord extends Thread {
      * @return
      */
     private void initMediaRecorder() {
-        getScreenParams();
+        if(mHeight == 1920 && mWidth== 910){
+            Log.e(TAG,"this is oppo r15");
+        }else {
+            getScreenParams();
+        }
+
         try {
             mMediaRecorder = new MediaRecorder();
             mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
@@ -393,7 +405,7 @@ public class MediaRecord extends Thread {
             Uri contentUri = FileProvider.getUriForFile(mActivity, provider, new File(combineVideoPath));
             intent.setDataAndType(contentUri, "video/*");
         } else {
-            uri = Uri.parse(combineVideoPath);
+            uri = Uri.parse("file://" + combineVideoPath);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.setDataAndType(uri, "video/*");
         }
