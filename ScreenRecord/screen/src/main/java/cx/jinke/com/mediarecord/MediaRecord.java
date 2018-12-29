@@ -138,7 +138,7 @@ public class MediaRecord extends Thread {
             mMediaRecorder = new MediaRecorder();
             mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
             mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-            fileName = MediaUtil.getSaveDirectory() + System.currentTimeMillis() + ".mp4";
+            fileName = MediaUtil.getSaveDirectory("Camera") + UUID.randomUUID().toString().substring(0, 3) + ".mp4";
             mMediaRecorder.setOutputFile(fileName);
             mMediaRecorder.setVideoSize(mWidth, mHeight);
             mMediaRecorder.setVideoFrameRate(FRAME_RATE);
@@ -186,7 +186,7 @@ public class MediaRecord extends Thread {
     }
 
 
-    private void dealMedia(boolean play) {
+    private void dealMedia(final  boolean play) {
         this.play = play;
         targetFile = MediaUtil.getSaveDirectory() + System.currentTimeMillis() + "_muxAudio.mp4";
         String appName = "" ;
@@ -204,6 +204,7 @@ public class MediaRecord extends Thread {
                 WavFileReader reader = new WavFileReader();
                 try {
                     if (reader.openFile(muxAudioPath)) {
+                        Log.e(TAG, "有音频文件 ");
                         WavFileHeader wavFileHeader = reader.getmWavFileHeader();
                         final PCMEncoder pcmEncoder = new PCMEncoder(wavFileHeader.getmByteRate(), wavFileHeader.getmSampleRate(), 1);
                         pcmEncoder.setOutputPath(targetFile);
@@ -221,7 +222,20 @@ public class MediaRecord extends Thread {
                     myHandler.sendEmptyMessageDelayed(MSG_DONE, 350);
 
                 } catch (Exception e) {
+                    Log.e(TAG, "没有音频文件 ");
                     e.printStackTrace();
+                    if (play) {
+                        callSystemPlayer(fileName,MediaRecord.this.provider);
+
+                    }
+                    saved = true;
+                    MediaScannerConnection.scanFile(mActivity, new String[]{fileName},
+                            new String[]{"video/mp4"}, new MediaScannerConnection.OnScanCompletedListener() {
+                                @Override
+                                public void onScanCompleted(String path, Uri uri) {
+                                    Log.e(TAG, "scan done");
+                                }
+                            });
                 }
             }
         }).start();
@@ -254,7 +268,7 @@ public class MediaRecord extends Thread {
     public void play(String provider) {
         this.provider = provider;
         if (saved) {
-            callSystemPlayer(this.provider);
+            callSystemPlayer(combineVideoPath,this.provider);
         } else {
             dealMedia(true);
         }
@@ -371,7 +385,7 @@ public class MediaRecord extends Thread {
         try {
             if (RecordUtil.getInstance().muxM4AMp4(targetFile, fileName, combineVideoPath)) {
                 if (play) {
-                    callSystemPlayer(MediaRecord.this.provider);
+                    callSystemPlayer(combineVideoPath,MediaRecord.this.provider);
 
                 }
                 saved = true;
@@ -395,17 +409,17 @@ public class MediaRecord extends Thread {
 
 
     //调用VideoView
-    private void callSystemPlayer(String provider) {
+    private void callSystemPlayer(String path ,String provider) {
 
         Intent intent = new Intent();
         intent.setAction(android.content.Intent.ACTION_VIEW);
         Uri uri;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            Uri contentUri = FileProvider.getUriForFile(mActivity, provider, new File(combineVideoPath));
+            Uri contentUri = FileProvider.getUriForFile(mActivity, provider, new File(path));
             intent.setDataAndType(contentUri, "video/*");
         } else {
-            uri = Uri.parse("file://" + combineVideoPath);
+            uri = Uri.parse("file://" + path);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.setDataAndType(uri, "video/*");
         }
