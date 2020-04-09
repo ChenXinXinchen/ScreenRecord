@@ -19,6 +19,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RecordUtil {
     private static final String TAG = RecordUtil.class.getSimpleName();
@@ -331,7 +333,7 @@ public class RecordUtil {
      * @param outPath .mp4
      */
     public boolean muxAacMp4(String aacPath, String mp4Path, String outPath) {
-        boolean flag;
+        AtomicBoolean flag = new AtomicBoolean(false);
         try {
             AACTrackImpl aacTrack = new AACTrackImpl(new FileDataSourceImpl(aacPath));
             Movie videoMovie = MovieCreator.build(mp4Path);
@@ -350,13 +352,13 @@ public class RecordUtil {
             FileOutputStream fos = new FileOutputStream(new File(outPath));
             out.writeContainer(fos.getChannel());
             fos.close();
-            flag = true;
+            flag.set(true);
             Log.e("update_tag", "merge finish");
         } catch (Exception e) {
             e.printStackTrace();
-            flag = false;
+            flag.set(false);
         }
-        return flag;
+        return flag.get();
     }
 
     /**
@@ -367,7 +369,7 @@ public class RecordUtil {
      * @param outPath .mp4
      */
     public boolean muxMp3Mp4(String mp3Path, String mp4Path, String outPath) {
-        boolean flag = false;
+        AtomicBoolean flag = new AtomicBoolean(false);
         try {
             MP3TrackImpl mp3Track = new MP3TrackImpl(new FileDataSourceImpl(mp3Path));
             Movie videoMovie = MovieCreator.build(mp4Path);
@@ -379,20 +381,20 @@ public class RecordUtil {
             }
 
             Movie resultMovie = new Movie();
-            resultMovie.addTrack(videoTracks);// 视频部分
+            resultMovie.addTrack(Objects.requireNonNull(videoTracks));// 视频部分
             resultMovie.addTrack(mp3Track);// 音频部分
 
             Container out = new DefaultMp4Builder().build(resultMovie);
             FileOutputStream fos = new FileOutputStream(new File(outPath));
             out.writeContainer(fos.getChannel());
             fos.close();
-            flag = true;
+            flag.set(true);
             Log.e("update_tag", "merge finish");
         } catch (Exception e) {
             e.printStackTrace();
-            flag = false;
+            flag.set(false);
         }
-        return flag;
+        return flag.get();
     }
 
 
@@ -404,8 +406,8 @@ public class RecordUtil {
      * @param outPath .mp4
      */
     public boolean muxM4AMp4(String m4aPath, String mp4Path, String outPath) {
-        Movie audioMovie = null;
-        boolean flag = false;
+        Movie audioMovie ;
+        AtomicBoolean flag = new AtomicBoolean(false);
         try {
             audioMovie = MovieCreator.build(m4aPath);
             Track audioTracks = null;// 获取视频的单纯音频部分
@@ -431,12 +433,12 @@ public class RecordUtil {
             FileOutputStream fos = new FileOutputStream(new File(outPath));
             out.writeContainer(fos.getChannel());
             fos.close();
-            flag = true;
+            flag.set(true);
         } catch (Exception e) {
             e.printStackTrace();
-            flag = false;
+            flag.set(false);
         }
-        return flag;
+        return flag.get();
 
     }
 

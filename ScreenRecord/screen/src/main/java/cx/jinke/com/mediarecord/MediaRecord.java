@@ -1,11 +1,11 @@
 package cx.jinke.com.mediarecord;
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Intent;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
-import android.media.MediaFormat;
-import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.media.MediaScannerConnection;
 import android.media.projection.MediaProjection;
@@ -15,23 +15,14 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
-import android.support.annotation.RequiresApi;
-import android.support.v4.content.FileProvider;
-import android.text.TextUtils;
-import android.text.format.DateUtils;
 import android.util.DisplayMetrics;
 import android.util.Log;
-import android.view.View;
-import android.view.WindowManager;
-import android.widget.FrameLayout;
-import android.widget.MediaController;
-import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.text.SimpleDateFormat;
@@ -39,6 +30,8 @@ import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static android.media.projection.MediaProjection.*;
 
 public class MediaRecord extends Thread {
     private static final String TAG = "MediaRecord";
@@ -69,10 +62,13 @@ public class MediaRecord extends Thread {
     private String provider;
 
 
-    private MediaProjection.Callback mProjectionCallback = new MediaProjection.Callback() {
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private Callback mProjectionCallback = new Callback() {
         @Override
         public void onStop() {
+            Log.e("", "");
         }
+
     };
 
 
@@ -82,11 +78,12 @@ public class MediaRecord extends Thread {
         mActivity = activity;
 
     }
-    public MediaRecord(int dpi, MediaProjection mp, Activity activity,int width ,int height) {
+
+    public MediaRecord(int dpi, MediaProjection mp, Activity activity, int width, int height) {
         mDpi = dpi;
         mMediaProjection = mp;
         mActivity = activity;
-        mWidth = width ;
+        mWidth = width;
         mHeight = height;
 
     }
@@ -94,10 +91,8 @@ public class MediaRecord extends Thread {
     public final void quit() {
         mForceQuit.set(true);
         if (!mIsRunning.get()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                stopTime.set(System.currentTimeMillis());
-                release();
-            }
+            stopTime.set(System.currentTimeMillis());
+            release();
         } else {
             signalStop(false);
         }
@@ -110,7 +105,7 @@ public class MediaRecord extends Thread {
         if (mWorker != null) throw new IllegalStateException();
         mWorker = new HandlerThread(TAG);
         mWorker.start();
-        myHandler = new MyHandler(mWorker.getLooper(), new WeakReference<>(mActivity));
+        myHandler = new MyHandler(mWorker.getLooper(), mActivity);
         myHandler.sendEmptyMessage(MSG_START);
     }
 
@@ -128,9 +123,9 @@ public class MediaRecord extends Thread {
      * @return
      */
     private void initMediaRecorder() {
-        if(mHeight == 1920 && mWidth== 910){
-            Log.e(TAG,"this is oppo r15");
-        }else {
+        if (mHeight == 1920 && mWidth == 910) {
+            Log.e(TAG, "this is oppo r15");
+        } else {
             getScreenParams();
         }
 
@@ -150,6 +145,7 @@ public class MediaRecord extends Thread {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
     }
 
     private void release() {
@@ -186,65 +182,60 @@ public class MediaRecord extends Thread {
     }
 
 
-    private void dealMedia(final  boolean play) {
+    private void dealMedia(final boolean play) {
         this.play = play;
         targetFile = MediaUtil.getSaveDirectory() + System.currentTimeMillis() + "_muxAudio.mp4";
-        String appName = "" ;
-        if(mActivity.getPackageName().contains("tom")){
-            appName = "MyTalkingTom-" ;
-        }else if(mActivity.getPackageName().contains("angela")){
-             appName = "MyTalkingAngela-" ;
+        String appName = "";
+
+        if (mActivity.getPackageName().contains("tom")) {
+            appName = "MyTalkingTom-";
+        } else if (mActivity.getPackageName().contains("angela")) {
+            appName = "MyTalkingAngela-";
         }
         combineVideoPath = MediaUtil.getSaveDirectory("Camera") + appName +
                 UUID.randomUUID().toString().substring(0, 3) + ".mp4";
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                WavFileReader reader = new WavFileReader();
-                try {
-                    if (reader.openFile(muxAudioPath)) {
-                        Log.e(TAG, "有音频文件 ");
-                        WavFileHeader wavFileHeader = reader.getmWavFileHeader();
-                        final PCMEncoder pcmEncoder = new PCMEncoder(wavFileHeader.getmByteRate(), wavFileHeader.getmSampleRate(), 1);
-                        pcmEncoder.setOutputPath(targetFile);
-                        pcmEncoder.prepare();
-                        InputStream inputStream = new FileInputStream(new File(muxAudioPath));
-                        inputStream.skip(44);
-                        pcmEncoder.encode(inputStream, wavFileHeader.getmSampleRate());
-                        pcmEncoder.stop();
-                    }
-
-                    if (mWorker != null) throw new IllegalStateException();
-                    mWorker = new HandlerThread("MSG_DONE");
-                    mWorker.start();
-                    myHandler = new MyHandler(mWorker.getLooper(), new WeakReference<>(mActivity));
-                    myHandler.sendEmptyMessageDelayed(MSG_DONE, 350);
-
-                } catch (Exception e) {
-                    Log.e(TAG, "没有音频文件 ");
-                    e.printStackTrace();
-                    if (play) {
-                        callSystemPlayer(fileName,MediaRecord.this.provider);
-
-                    }
-                    saved = true;
-                    MediaScannerConnection.scanFile(mActivity, new String[]{fileName},
-                            new String[]{"video/mp4"}, new MediaScannerConnection.OnScanCompletedListener() {
-                                @Override
-                                public void onScanCompleted(String path, Uri uri) {
-                                    Log.e(TAG, "scan done");
-                                }
-                            });
+        new Thread(() -> {
+            WavFileReader reader = new WavFileReader();
+            try {
+                if (reader.openFile(muxAudioPath)) {
+                    Log.e(TAG, "有音频文件 ");
+                    WavFileHeader wavFileHeader = reader.getmWavFileHeader();
+                    final PCMEncoder pcmEncoder = new PCMEncoder(wavFileHeader.getmByteRate(), wavFileHeader.getmSampleRate(), 1);
+                    pcmEncoder.setOutputPath(targetFile);
+                    pcmEncoder.prepare();
+                    InputStream inputStream = new FileInputStream(new File(muxAudioPath));
+                    inputStream.skip(44);
+                    pcmEncoder.encode(inputStream, wavFileHeader.getmSampleRate());
+                    pcmEncoder.stop();
                 }
+
+                if (mWorker != null) throw new IllegalStateException();
+                mWorker = new HandlerThread("MSG_DONE");
+                mWorker.start();
+                myHandler = new MyHandler(mWorker.getLooper(), mActivity);
+                myHandler.sendEmptyMessageDelayed(MSG_DONE, 350);
+
+
+            } catch (Exception e) {
+                Log.e(TAG, "没有音频文件 " + e.getMessage());
+                combineVideoPath = fileName;
+                if (play) {
+                    callSystemPlayer(mActivity, combineVideoPath, MediaRecord.this.provider);
+
+                }
+                saved = true;
+                MediaScannerConnection.scanFile(mActivity, new String[]{combineVideoPath},
+                        new String[]{"video/mp4"}, (path, uri) -> Log.e(TAG, "scan done"));
             }
         }).start();
 
 
     }
 
+    @SuppressLint("SimpleDateFormat")
     private String getDateString() {
-        SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+       SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd");
         return df.format(new Date());
     }
 
@@ -268,7 +259,7 @@ public class MediaRecord extends Thread {
     public void play(String provider) {
         this.provider = provider;
         if (saved) {
-            callSystemPlayer(combineVideoPath,this.provider);
+            callSystemPlayer(mActivity, combineVideoPath, this.provider);
         } else {
             dealMedia(true);
         }
@@ -277,7 +268,6 @@ public class MediaRecord extends Thread {
     }
 
 
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     public void stopRecord(String audioPath, boolean delete) {
         mIsRunning.set(false);
         saved = false;
@@ -292,11 +282,10 @@ public class MediaRecord extends Thread {
 
 
         }
-
     }
 
 
-    private void record() {
+    private void record(final Activity activity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             if (mIsRunning.get() || mForceQuit.get()) {
                 throw new IllegalStateException();
@@ -319,12 +308,7 @@ public class MediaRecord extends Thread {
                 Log.i(TAG, "mediarecorder start");
             } catch (Exception e) {
                 e.printStackTrace();
-                mActivity.runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(mActivity, "启动录屏失败，音频设备被占用", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                activity.runOnUiThread(() -> Toast.makeText(activity, "启动录屏失败，音频设备被占用", Toast.LENGTH_SHORT).show());
 
             }
         }
@@ -344,9 +328,9 @@ public class MediaRecord extends Thread {
         private final WeakReference<Activity> mActivityReference;
 
 
-        MyHandler(Looper looper, WeakReference<Activity> mActivityReference) {
+        MyHandler(Looper looper, Activity activity) {
             super(looper);
-            this.mActivityReference = mActivityReference;
+            mActivityReference = new WeakReference<>(activity);
         }
 
         @Override
@@ -355,37 +339,29 @@ public class MediaRecord extends Thread {
             switch (msg.what) {
                 case MSG_START:
                     try {
-                        record();
+                        record(mActivityReference.get());
                         break;
                     } catch (Exception e) {
                         msg.obj = e;
                     }
                 case MSG_DONE:
                     quitWorker();
-                    prepareVideo();
-                    MediaScannerConnection.scanFile(mActivity, new String[]{combineVideoPath},
-                            new String[]{"video/mp4"}, new MediaScannerConnection.OnScanCompletedListener() {
-                                @Override
-                                public void onScanCompleted(String path, Uri uri) {
-                                    Log.e(TAG, "scan done");
-                                }
-                            });
+                    prepareVideo(mActivityReference.get());
+                    MediaScannerConnection.scanFile(mActivityReference.get(), new String[]{combineVideoPath},
+                            new String[]{"video/mp4"}, (path, uri) -> Log.e(TAG, "scan done"));
                     break;
 
 
             }
         }
 
-        public WeakReference<Activity> getActivityReference() {
-            return mActivityReference;
-        }
     }
 
-    private void prepareVideo() {
+    private void prepareVideo(final Activity activity) {
         try {
             if (RecordUtil.getInstance().muxM4AMp4(targetFile, fileName, combineVideoPath)) {
                 if (play) {
-                    callSystemPlayer(combineVideoPath,MediaRecord.this.provider);
+                    callSystemPlayer(activity, combineVideoPath, MediaRecord.this.provider);
 
                 }
                 saved = true;
@@ -409,21 +385,21 @@ public class MediaRecord extends Thread {
 
 
     //调用VideoView
-    private void callSystemPlayer(String path ,String provider) {
+    private void callSystemPlayer(final Activity activity, String path, String provider) {
 
         Intent intent = new Intent();
         intent.setAction(android.content.Intent.ACTION_VIEW);
         Uri uri;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            Uri contentUri = FileProvider.getUriForFile(mActivity, provider, new File(path));
+            Uri contentUri = FileProvider.getUriForFile(activity, provider, new File(path));
             intent.setDataAndType(contentUri, "video/*");
         } else {
             uri = Uri.parse("file://" + path);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.setDataAndType(uri, "video/*");
         }
-        mActivity.startActivity(intent);
+        activity.startActivity(intent);
 
 
         quitWorker();

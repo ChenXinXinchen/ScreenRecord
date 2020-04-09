@@ -9,6 +9,7 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Anna Stępień <anna.stepien@semantive.com>
@@ -109,13 +110,13 @@ public class PCMEncoder {
     public void encode(InputStream inputStream, int sampleRate) throws IOException {
         Log.d(TAG, "Starting encoding of InputStream");
         byte[] tempBuffer = new byte[2 * sampleRate];
-        boolean hasMoreData = true;
-        boolean stop = false;
+        AtomicBoolean hasMoreData  = new AtomicBoolean(false);
+        AtomicBoolean stop = new AtomicBoolean(false);
 
-        while (!stop) {
+        while (!stop.get()) {
             int inputBufferIndex = 0;
             int currentBatchRead = 0;
-            while (inputBufferIndex != -1 && hasMoreData && currentBatchRead <= 50 * sampleRate) {
+            while (inputBufferIndex != -1 && hasMoreData.get() && currentBatchRead <= 50 * sampleRate) {
                 inputBufferIndex = mediaCodec.dequeueInputBuffer(CODEC_TIMEOUT);
 
                 if (inputBufferIndex >= 0) {
@@ -125,8 +126,8 @@ public class PCMEncoder {
                     int bytesRead = inputStream.read(tempBuffer, 0, buffer.limit());
                     if (bytesRead == -1) {
                         mediaCodec.queueInputBuffer(inputBufferIndex, 0, 0, (long) presentationTimeUs, 0);
-                        hasMoreData = false;
-                        stop = true;
+                        hasMoreData.set(false);
+                        stop.set(true);
                     } else {
                         totalBytesRead += bytesRead;
                         currentBatchRead += bytesRead;
